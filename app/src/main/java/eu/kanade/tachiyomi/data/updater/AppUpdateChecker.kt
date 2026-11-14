@@ -36,13 +36,9 @@ class AppUpdateChecker(
     }
 }
 
-val GITHUB_REPO: String by lazy {
-    if (isNightlyBuildType) {
-        "mihonapp/mihon-preview"
-    } else {
-        "mihonapp/mihon"
-    }
-}
+// Mangaku: updates come from this fork's own releases, signed with the fork's own key.
+// Upstream Mihon releases are signed with a different key and could not be installed over Mangaku.
+val GITHUB_REPO: String = "OnoOno92/mangaku"
 
 val RELEASE_TAG: String by lazy {
     if (isNightlyBuildType) {

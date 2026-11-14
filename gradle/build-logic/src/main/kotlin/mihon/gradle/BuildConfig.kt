@@ -24,8 +24,9 @@ val Project.Config: BuildConfig get() = object : BuildConfig {
         }
         ?: Distribution.LOCAL
 
-    override val includeTelemetry: Boolean = project.flag("include-telemetry")
-        ?: (distribution == Distribution.CI || distribution == Distribution.GITHUB)
+    // Mangaku: telemetry (Firebase Analytics/Crashlytics) is never built in unless explicitly
+    // requested with -Pinclude-telemetry=true, whatever the distribution.
+    override val includeTelemetry: Boolean = project.flag("include-telemetry") ?: false
 
     override val uploadCrashlyticsMapping: Boolean = includeTelemetry && (distribution == Distribution.GITHUB)
 

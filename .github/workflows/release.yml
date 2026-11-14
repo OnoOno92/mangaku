@@ -7,13 +7,16 @@ on:
 env:
   MIHON_GITHUB_RELEASE: true
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   get_tag:
-    if: github.repository == 'mihonapp/mihon'
+    if: github.repository == 'OnoOno92/mangaku'
     name: Extract tag name
     runs-on: 'ubuntu-26.04'
     outputs:
@@ -25,7 +28,7 @@ jobs:
         run: echo "tag=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
 
   build:
-    if: github.repository == 'mihonapp/mihon'
+    if: github.repository == 'OnoOno92/mangaku'
     name: Build
     runs-on: 'ubuntu-26.04'
     needs: get_tag
@@ -46,14 +49,19 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Decode signing keystore
-        run: echo "$SIGNING_KEY" | base64 -d > "${{ runner.temp }}/antsy.keystore"
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::error::SIGNING_KEY secret is not set. See FORK.md, section 'Signing releases'."
+            exit 1
+          fi
+          echo "$SIGNING_KEY" | base64 -d > "${{ runner.temp }}/mangaku.keystore"
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
       - name: Build
         run: ./gradlew assembleRelease -Pdist=github
         env:
-          storeFile: ${{ runner.temp }}/antsy.keystore
+          storeFile: ${{ runner.temp }}/mangaku.keystore
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyAlias: ${{ secrets.ALIAS }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
@@ -62,25 +70,25 @@ jobs:
         run: |
           set -e
 
-          mv app/build/outputs/apk/release/app-universal-release.apk mihon-${{ needs.get_tag.outputs.tag }}.apk
-          mv app/build/outputs/apk/release/app-arm64-v8a-release.apk mihon-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
-          mv app/build/outputs/apk/release/app-armeabi-v7a-release.apk mihon-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
-          mv app/build/outputs/apk/release/app-x86-release.apk mihon-x86-${{ needs.get_tag.outputs.tag }}.apk
-          mv app/build/outputs/apk/release/app-x86_64-release.apk mihon-x86_64-${{ needs.get_tag.outputs.tag }}.apk
+          mv app/build/outputs/apk/release/app-universal-release.apk mangaku-${{ needs.get_tag.outputs.tag }}.apk
+          mv app/build/outputs/apk/release/app-arm64-v8a-release.apk mangaku-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
+          mv app/build/outputs/apk/release/app-armeabi-v7a-release.apk mangaku-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
+          mv app/build/outputs/apk/release/app-x86-release.apk mangaku-x86-${{ needs.get_tag.outputs.tag }}.apk
+          mv app/build/outputs/apk/release/app-x86_64-release.apk mangaku-x86_64-${{ needs.get_tag.outputs.tag }}.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mihon
+          name: mangaku
           path: |
-            mihon-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-x86-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-x86_64-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-x86-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-x86_64-${{ needs.get_tag.outputs.tag }}.apk
 
   build_foss:
-    if: github.repository == 'mihonapp/mihon'
+    if: github.repository == 'OnoOno92/mangaku'
     name: Build (FOSS)
     runs-on: ubuntu-26.04
     needs: get_tag
@@ -101,14 +109,19 @@ jobs:
           cache-disabled: true
 
       - name: Decode signing keystore
-        run: echo "$SIGNING_KEY" | base64 -d > "${{ runner.temp }}/antsy.keystore"
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::error::SIGNING_KEY secret is not set. See FORK.md, section 'Signing releases'."
+            exit 1
+          fi
+          echo "$SIGNING_KEY" | base64 -d > "${{ runner.temp }}/mangaku.keystore"
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
       - name: Build
         run: ./gradlew assembleFoss -Pdist=foss
         env:
-          storeFile: ${{ runner.temp }}/antsy.keystore
+          storeFile: ${{ runner.temp }}/mangaku.keystore
           storePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyAlias: ${{ secrets.ALIAS }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
@@ -117,19 +130,22 @@ jobs:
         run: |
           set -e
 
-          mv app/build/outputs/apk/foss/app-universal-foss.apk mihon-${{ needs.get_tag.outputs.tag }}-foss.apk
+          mv app/build/outputs/apk/foss/app-universal-foss.apk mangaku-${{ needs.get_tag.outputs.tag }}-foss.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mihon-foss
-          path: mihon-${{ needs.get_tag.outputs.tag }}-foss.apk
+          name: mangaku-foss
+          path: mangaku-${{ needs.get_tag.outputs.tag }}-foss.apk
 
   release:
-    if: github.repository == 'mihonapp/mihon'
+    if: github.repository == 'OnoOno92/mangaku'
     name: Create GitHub Release
     runs-on: ubuntu-26.04
     needs: [get_tag, build, build_foss]
+    permissions:
+      contents: write
+      actions: write
 
     steps:
       - name: Download all artifacts
@@ -142,18 +158,17 @@ jobs:
         with:
           failOnError: false
           name: |
-            mihon
-            mihon-foss
+            mangaku
+            mangaku-foss
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ needs.get_tag.outputs.tag }}
-          name: Mihon ${{ needs.get_tag.outputs.tag }}
+          name: Mangaku ${{ needs.get_tag.outputs.tag }}
           body: |
-            Consider supporting the development on [Patreon](https://www.patreon.com/mihon/membership) or [OpenCollective](https://opencollective.com/mihon/contribute) to keep Mihon improving!
-
-            Check out the [past release notes](https://github.com/mihonapp/mihon/releases) if you're upgrading from an earlier version.
+            Mangaku is a rebranded build of [Mihon](https://github.com/mihonapp/mihon), signed with this fork's own key and built without telemetry.
+            Consider supporting upstream development on [Patreon](https://www.patreon.com/mihon/membership) or [OpenCollective](https://opencollective.com/mihon/contribute).
 
             <!-->
 
@@ -163,14 +178,14 @@ jobs:
 
             > [!TIP]
             >
-            > ### If you are unsure which version to download then go with `mihon-${{ needs.get_tag.outputs.tag }}.apk`
+            > ### If you are unsure which version to download then go with `mangaku-${{ needs.get_tag.outputs.tag }}.apk`
           files: |
-            mihon-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-${{ needs.get_tag.outputs.tag }}-foss.apk
-            mihon-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-x86-${{ needs.get_tag.outputs.tag }}.apk
-            mihon-x86_64-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-${{ needs.get_tag.outputs.tag }}-foss.apk
+            mangaku-arm64-v8a-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-armeabi-v7a-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-x86-${{ needs.get_tag.outputs.tag }}.apk
+            mangaku-x86_64-${{ needs.get_tag.outputs.tag }}.apk
           draft: true
           prerelease: false
-          token: ${{ secrets.MIHON_BOT_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
